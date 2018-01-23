@@ -6,19 +6,23 @@ Based on https://github.com/openresearchdata/ckanext-oaipmh
 
 ### Installation
 
-Use `pip` to install this plugin. This example installs it in `/var/www`
+1.  Install ckanext-harvest ([https://github.com/ckan/ckanext-harvest#installation](https://github.com/ckan/ckanext-harvest#installation)) (Only if you want to use the RDF harvester)
+
+2. . /<CKAN_HOME>/bin/activate
+
+3. cd <CKAN_HOME>/src
+
+4.  Install the extension on your virtualenv:
+
+    (pyenv)pip install -e git+https://github.com/aragonopendata/ckanext-oaipmh-unizar.git#egg=ckanext-oaipmh-unizar 
 
 
-pip install -e git+https://github.com/aragonopendata/ckanext-oaipmh-unizar.git#egg=ckanext-oaipmh-unizar 
-cd /var/www/ckanext-oaipmh
-pip install -r ckanext-oaipmh-unizar/requirements.txt
+5.  Install the extension requirements:
 
+        (pyenv) $ pip install -r ckanext-oaipmh-unizar/requirements.txt
 
-Make sure the ckanext-harvest extension is installed as well.
+6.  Enable the required plugins in your ini file:
 
-**Important: You need to have a sysadmin user called "harvest" on your CKAN instance!**
+        ckan.plugins = oaipmh_harvester_unizar
 
-### Setup the Harvester
-
-- add `oaipmh_harvester_unizar` to `ckan.plugins` in `development.ini` (or `production.ini`)
 
