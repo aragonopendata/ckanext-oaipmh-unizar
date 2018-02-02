@@ -17,6 +17,8 @@ from oaipmh.metadata import MetadataRegistry
 from metadata import oai_ddi_reader
 from metadata import oai_dc_reader
 
+from ckan.model.license import LicenseRegister
+
 log = logging.getLogger(__name__)
 
 
@@ -284,7 +286,24 @@ class OaipmhHarvester(HarvesterBase):
             package_dict['owner_org'] = owner_org
 
             # add license
-            package_dict['license_id'] = self._extract_license_id(content)
+            
+            license_id_final = ''
+            license_title_final = ''
+            license_url_final = self._extract_license_id(content)
+
+            for license_id, license in LicenseRegister().items():
+                log.debug('Tratando licencia: %s ',license_id)
+                log.debug('Licencia URL: %s ',license_url_final)
+                log.debug('Licencia REG: %s ',license.url)
+                if license.url != '':
+                    if license_url_final.startswith(license.url):
+                        log.debug('Encontrada licencia')
+                        license_id_final = license_id
+                        license_title_final = license.title
+                        break
+            package_dict['license_id'] = license_id_final
+            package_dict['license_title'] = license_title_final
+            package_dict['license_url'] = license_url_final
 
             # add resources
             urls = self._get_possible_resource(harvest_object, content)
@@ -299,6 +318,9 @@ class OaipmhHarvester(HarvesterBase):
             package_dict['tags'] = tags
             package_dict['extras'] = extras
 
+            package_dict['metadata_modified'] = content['metadata_modified']
+            package_dict['metadata_created'] = content['metadata_modified']
+            
             # groups aka projects
             #groups = []
 
@@ -362,7 +384,7 @@ class OaipmhHarvester(HarvesterBase):
         extras = []
         tags = []
         for key, value in content.iteritems():
-            if key in ['relation']:
+            if key in ['relation','rights','identifier','pulisher','creator','set_spec','metadata_modified','publisher']:
                 #ignoramos los nodos relation
                 continue
 
