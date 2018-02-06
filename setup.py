@@ -15,7 +15,7 @@ setup(
     url='http://www.liip.ch',
     license='AGPL',
     packages=find_packages(exclude=['ez_setup', 'examples', 'tests']),
-    namespace_packages=['ckanext', 'ckanext.oaipmh-unizar'],
+    namespace_packages=['ckanext', 'ckanext.oaipmhunizar'],
     include_package_data=True,
     zip_safe=False,
     install_requires=[
