@@ -22,10 +22,13 @@ setup(
         # -*- Extra requirements: -*-
     ],
     entry_points=\
-    """
+    '''
+
     [ckan.plugins]
     oaipmh_harvester_unizar=ckanext.oaipmh-unizar.harvester:OaipmhHarvester
+
     [paste.paster_command]
     harvester_unizar=ckanext.oaipmh-unizar.command:OaipmhHarvesterCommand
-    """,
+
+    },'''
 )
