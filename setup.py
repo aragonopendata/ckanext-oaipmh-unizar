@@ -21,14 +21,11 @@ setup(
     install_requires=[
         # -*- Extra requirements: -*-
     ],
-    entry_points=
-    '''
-
+    entry_points='''
     [ckan.plugins]
     oaipmh_harvester_unizar=ckanext.oaipmhunizar.harvester:OaipmhHarvester
 
     [paste.paster_command]
     harvester_unizar=ckanext.oaipmhunizar.command:OaipmhHarvesterCommand
-
-    },'''
+    ''',
 )
