@@ -25,10 +25,10 @@ setup(
     '''
 
     [ckan.plugins]
-    oaipmh_harvester_unizar=ckanext.oaipmh-unizar.harvester:OaipmhHarvester
+    oaipmh_harvester_unizar=ckanext.oaipmhunizar.harvester:OaipmhHarvester
 
     [paste.paster_command]
-    harvester_unizar=ckanext.oaipmh-unizar.command:OaipmhHarvesterCommand
+    harvester_unizar=ckanext.oaipmhunizar.command:OaipmhHarvesterCommand
 
     },'''
 )
