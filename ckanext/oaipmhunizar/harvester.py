@@ -323,7 +323,7 @@ class OaipmhHarvester(HarvesterBase):
             
             # groups aka projects
             groups = []
-            groups.extend('6bc59ed8-b636-493b-9144-1dbe3faa4bda')
+            groups.extend(self._fill_education_group(content, context))
 
             # create group based on set
             #if content['set_spec']:
@@ -451,6 +451,13 @@ class OaipmhHarvester(HarvesterBase):
         # change whatever they want in the package_dict
         return package_dict
 
+    def _fill_education_group(self, content, context):
+        log.debug('Education Group')
+        group_ids = []
+        group_ids.append('6bc59ed8-b636-493b-9144-1dbe3faa4bda')
+        log.debug('Group ids: %s' % group_ids)
+        return group_ids
+        
     def _find_or_create_groups(self, groups, context):
         log.debug('Group names: %s' % groups)
         group_ids = []
