@@ -322,7 +322,8 @@ class OaipmhHarvester(HarvesterBase):
             package_dict['metadata_created'] = content['metadata_modified']
             
             # groups aka projects
-            #groups = []
+            groups = []
+            groups.extend('6bc59ed8-b636-493b-9144-1dbe3faa4bda')
 
             # create group based on set
             #if content['set_spec']:
@@ -339,7 +340,7 @@ class OaipmhHarvester(HarvesterBase):
             #    self._extract_groups(content, context)
             #)
 
-            #package_dict['groups'] = groups
+            package_dict['groups'] = groups
 
             # allow sub-classes to add additional fields
             package_dict = self._extract_additional_fields(
