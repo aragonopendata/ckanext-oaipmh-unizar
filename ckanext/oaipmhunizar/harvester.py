@@ -287,23 +287,7 @@ class OaipmhHarvester(HarvesterBase):
 
             # add license
             
-            license_id_final = ''
-            license_title_final = ''
-            license_url_final = self._extract_license_id(content)
-
-            for license_id, license in LicenseRegister().items():
-                log.debug('Tratando licencia: %s ',license_id)
-                log.debug('Licencia URL: %s ',license_url_final)
-                log.debug('Licencia REG: %s ',license.url)
-                if license.url != '':
-                    if license_url_final.startswith(license.url):
-                        log.debug('Encontrada licencia')
-                        license_id_final = license_id
-                        license_title_final = license.title
-                        break
-            package_dict['license_id'] = license_id_final
-            package_dict['license_title'] = license_title_final
-            package_dict['license_url'] = license_url_final
+            package_dict['license_id'] = 'CC-BY-NC-4.0'
 
             # add resources
             urls = self._get_possible_resource(harvest_object, content)
