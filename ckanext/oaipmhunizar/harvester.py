@@ -384,11 +384,19 @@ class OaipmhHarvester(HarvesterBase):
     def _extract_tags_and_extras(self, content):
         extras = []
         tags = []
+        checker = False
         for key, value in content.iteritems():
             if key in ['relation','rights','identifier','pulisher','creator','set_spec','metadata_modified','publisher']:
                 #ignoramos los nodos relation
                 continue
 
+            if key in ['coverage']:
+                checker = True
+                log.debug('Encontrado coverage')
+                for x in value:
+                    log.debug('Value: %s ' % x)
+                    extras.append(self._get_frecuency_granularity(x))
+                    
             if key in self._get_mapping().values():
                 continue
             if key in ['type', 'subject']:
@@ -401,7 +409,9 @@ class OaipmhHarvester(HarvesterBase):
                 value = value[0]
             if not value:
                 value = None
-            extras.append((key, value))
+            
+            if not checker:
+                extras.append((key, value))
 
         tags = [munge_tag(tag[:100]) for tag in tags]
 
@@ -420,6 +430,36 @@ class OaipmhHarvester(HarvesterBase):
                 urls.append(ident)
                 
         return urls
+    
+    def _get_frecuency_granularity(self, value):
+        key_content = ''
+        value_content = ''
+        value_granularity = ''
+        key_frequency = 'Frequency'
+        key_detail_level = 'Granularity'
+        value_detail_level = 'Nivel de detalle:'
+        
+        if 'Anual' in value:
+            key_content = key_frequency
+            value_content = 'Anual'
+        elif 'Semestral' in value:
+            key_content = key_frequency
+            value_content = 'Semestral'
+        elif 'Cuatrimestral' in value:
+            key_content = key_frequency
+            value_content = 'Cuatrimestral'
+        elif 'Trimestral' in value:
+            key_content = key_frequency
+            value_content = 'Trimestral'
+        elif value_detail_level in value:
+            key_content = key_detail_level
+            value_granularity = value[18:]
+            value_content = value_granularity.capitalize()
+        log.debug('Valores finales:')
+        log.debug('key: %s ' % key_content)
+        log.debug('value: %s ' % value_content)
+        
+        return (key_content, value_content)
 
     def _extract_resources(self, url, content):
         resources = []
