@@ -188,29 +188,38 @@ class OaipmhHarvester(HarvesterBase):
             header, metadata, _ = record
             log.debug('metadata %s' % metadata)
             log.debug('header %s' % header)
+	        
+            headerDict = header.__dict__
+            isDeleted = headerDict['_deleted']
+            if not isDeleted:
+                log.debug('Dataset con status deleted: %s' % isDeleted)
 
-            try:
-                metadata_modified = header.datestamp().isoformat()
-            except:
-                metadata_modified = None
+                try:
+                    metadata_modified = header.datestamp().isoformat()
+                except:
+                    metadata_modified = None
 
-            try:
-                content_dict = metadata.getMap()
-                content_dict['set_spec'] = header.setSpec()
-                if metadata_modified:
-                    content_dict['metadata_modified'] = metadata_modified
-                log.debug(content_dict)
-                content = json.dumps(content_dict)
-            except:
-                log.exception('Dumping the metadata failed!')
-                self._save_object_error(
-                    'Dumping the metadata failed!',
-                    harvest_object
-                )
+                try:
+                    content_dict = metadata.getMap()
+                    content_dict['set_spec'] = header.setSpec()
+                    if metadata_modified:
+                        content_dict['metadata_modified'] = metadata_modified
+                    log.debug(content_dict)
+                    content = json.dumps(content_dict)
+                except:
+                    log.exception('Dumping the metadata failed!')
+                    self._save_object_error(
+                        'Dumping the metadata failed!',
+                        harvest_object
+                    )
+                    return False
+
+                harvest_object.content = content
+                harvest_object.save()
+            else:
+                log.debug('Dataset con status deleted: %s' % isDeleted)
+                log.debug('Obviando dataset...')
                 return False
-
-            harvest_object.content = content
-            harvest_object.save()
         except:
             log.exception('Something went wrong!')
             self._save_object_error(
@@ -379,13 +388,26 @@ class OaipmhHarvester(HarvesterBase):
                 log.debug('Encontrado coverage')
                 for x in value:
                     log.debug('Value: %s ' % x)
-                    extras.append(self._get_frecuency_granularity(x))
+                    extras.append(self._get_frequency_granularity(x))
                     
+
+            if key in ['date']:
+                checker = True
+                log.debug('Encontrado fecha con tamanyo %s' % len(value))
+                dates = self._get_dates(value)
+                for x in dates:
+                    extras.append(x)
+
             if key in self._get_mapping().values():
                 continue
             if key in ['type', 'subject']:
                 if type(value) is list:
-                    tags.extend(value)
+                    tags_capitalized = []
+                    for content in value:
+                        value_aux = content
+                        final_value = value_aux.capitalize()
+                        tags_capitalized.append(final_value)
+                    tags.extend(tags_capitalized)
                 else:
                     tags.extend(value.split(';'))
                 continue
@@ -397,13 +419,16 @@ class OaipmhHarvester(HarvesterBase):
             if not checker:
                 extras.append((key, value))
 
-        tags = [munge_tag(tag[:100]) for tag in tags]
+        #tags = [munge_tag(tag[:100]) for tag in tags]
+
+        extras.append(('typeAragopedia',u'Arag\xf3n'))
+        extras.append(('uriAragopedia',u'http://opendata.aragon.es/recurso/territorio/ComunidadAutonoma/Arag\xf3n'))
 
         return (tags, extras)
 
     def _get_possible_resource(self, harvest_obj, content):
         urls = []
-        candidates = content['identifier']   
+        candidates = content['identifier']
         candidates.extend(content['relation'] )
         candidates.append(harvest_obj.guid)
 
@@ -415,13 +440,12 @@ class OaipmhHarvester(HarvesterBase):
                 
         return urls
     
-    def _get_frecuency_granularity(self, value):
+    def _get_frequency_granularity(self, value):
         key_content = ''
         value_content = ''
         value_granularity = ''
         key_frequency = 'Frequency'
         key_detail_level = 'Granularity'
-        value_detail_level = 'Nivel de detalle:'
         
         if 'Anual' in value:
             key_content = key_frequency
@@ -435,28 +459,48 @@ class OaipmhHarvester(HarvesterBase):
         elif 'Trimestral' in value:
             key_content = key_frequency
             value_content = 'Trimestral'
-        elif value_detail_level in value:
+        else:
             key_content = key_detail_level
-            value_granularity = value[18:]
+            value_granularity = value
             value_content = value_granularity.capitalize()
         log.debug('Valores finales:')
         log.debug('key: %s ' % key_content)
         log.debug('value: %s ' % value_content)
         
         return (key_content, value_content)
+    
+    def _get_dates(self, value):
+        dates = []
+        
+        dates.append(('TemporalFrom', value[0]))
+        if len(value) == 2:
+            dates.append(('TemporalUntil', value[1]))
+
+        return (dates)
+
 
     def _extract_resources(self, url, content):
         resources = []
-        log.debug('URL of ressource: %s' % url)
+        json_format = ['JSON','json']
+        csv_format = ['CSV','csv']
+        xml_format = ['XML','xml']
+        log.debug('URL of resource: %s' % url)
         if url:
             try:
                 #resource_format = content['format'][0]
-                resource_format = ''
+                if any(x in url for x in json_format):
+                    resource_format = 'json'
+                elif any(x in url for x in csv_format):
+                    resource_format = 'csv'
+                elif any(x in url for x in xml_format):
+                    resource_format = 'xml'
+                else:
+                    resource_format = 'URL'
             except (IndexError, KeyError):
                 resource_format = ''
             resources.append({
                 'name': content['title'][0],
-                'resource_type': resource_format,
+                'resource_type': None,
                 'format': resource_format,
                 'url': url
             })
