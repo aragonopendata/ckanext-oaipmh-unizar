@@ -471,10 +471,12 @@ class OaipmhHarvester(HarvesterBase):
     
     def _get_dates(self, value):
         dates = []
-        temp_from_date = value[0]
-        temp_from_date = temp_from_date[6:] + '-' + temp_from_date[3:-5] + '-' + temp_from_date[0:-8]
 
-        dates.append(('TemporalFrom', temp_from_date))
+        if len(value) > 0:
+            temp_from_date = value[0]
+            temp_from_date = temp_from_date[6:] + '-' + temp_from_date[3:-5] + '-' + temp_from_date[0:-8]
+            dates.append(('TemporalFrom', temp_from_date))
+
         if len(value) == 2:
             temp_until_date = value[1]
             temp_until_date = temp_until_date[6:] + '-' + temp_until_date[3:-5] + '-' + temp_until_date[0:-8]
