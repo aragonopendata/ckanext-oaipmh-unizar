@@ -7,7 +7,7 @@ Para instalar ckanext-oaipmh-unizar:
 
 1. Añade la siguiente línea a tu Dockerfile:
     ``` Dockerfile
-     RUN pip install -e git+https://github.com/aragonopendata/ckanext-oaipmh-unizar.git@ckan210#egg=ckanext-oaipmh-unizar  && \
+     RUN pip install -e git+https://${GITHUB_TOKEN}@github.com/aragonopendata/ckanext-oaipmh-unizar.git@ckan210#egg=ckanext-oaipmh-unizar  && \
          pip install -r ${APP_DIR}/src/ckanext-oaipmh-unizar/requirements.txt
     ```
 
