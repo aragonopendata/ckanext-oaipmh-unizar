@@ -1,3 +1,4 @@
+pytest-ckan
 # This file lists the dependencies of this extension.
 # Install with a command like: pip install -r requirements.txt 
 pyoai==2.5.0

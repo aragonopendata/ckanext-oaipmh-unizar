@@ -1,28 +1,21 @@
-# CKAN Harvester for OAI-PMH (Universidad de Zaragoza)
+# ckanext-oaipmh-unizar
+Esta extensión añade funcionalidades a 'ckanext-harvest' para tener la opción de cosechar datos de un sistema con protocolo 'OAI - PMH', en este caso está adaptado para tartar los datos obtenidos de 'Universidad de Zaragoza'.
+Para utilizar esta nueva funcionalidad de 'ckanext-haverst', tras añadir el plugin a CKAN, entra en el entorno WUI o CLI de 'ckanext-haverst' y crea un nuevo 'source' del tipo 'OAI-PMH' (en el entorno WUI lo veremos como 'OAI-PMH').
 
-Based on https://github.com/openresearchdata/ckanext-oaipmh
+## Instalación
+Para instalar ckanext-oaipmh-unizar:
 
-## Instructions
+1. Añade la siguiente línea a tu Dockerfile:
+    ``` Dockerfile
+     RUN pip install -e git+https://github.com/aragonopendata/ckanext-oaipmh-unizar.git@master#egg=ckanext-oaipmh-unizar  && \
+         pip install -r ${APP_DIR}/src/ckanext-oaipmh-unizar/requirements.txt
+    ```
 
-### Installation
+2. Añade 'iaest_rdf_harvester' a los plugins de CKAN
 
-1.  Install ckanext-harvest ([https://github.com/ckan/ckanext-harvest#installation](https://github.com/ckan/ckanext-harvest#installation)) (Only if you want to use the RDF harvester)
-
-2. . /<CKAN_HOME>/bin/activate
-
-3. cd <CKAN_HOME>/src
-
-4.  Install the extension on your virtualenv:
-
-    (pyenv)pip install -e git+https://github.com/aragonopendata/ckanext-oaipmh-unizar.git#egg=ckanext-oaipmh-unizar 
-
-
-5.  Install the extension requirements:
-
-        (pyenv) $ pip install -r ckanext-oaipmh-unizar/requirements.txt
-
-6.  Enable the required plugins in your ini file:
-
-        ckan.plugins = oaipmh_harvester_unizar
-
-
+3. Construye y levanta el entorno de CKAN.
+    ```bash
+    cd entorno_de_ckan
+    docker compose build
+    docker compose up -d
+    ```

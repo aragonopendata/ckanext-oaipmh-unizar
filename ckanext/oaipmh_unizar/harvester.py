@@ -1,6 +1,6 @@
 import logging
 import json
-import urllib2
+import urllib.request as urllib2
 
 from ckan.model import Session
 from ckan.logic import get_action
@@ -14,8 +14,7 @@ from ckanext.harvest.model import HarvestObject
 import oaipmh.client
 from oaipmh.metadata import MetadataRegistry
 
-from metadata import oai_ddi_reader
-from metadata import oai_dc_reader
+from ckanext.oaipmh_unizar.metadata import oai_ddi_reader, oai_dc_reader
 
 from ckan.model.license import LicenseRegister
 
@@ -72,14 +71,14 @@ class OaipmhHarvester(HarvesterBase):
                 )
                 harvest_obj.save()
                 harvest_obj_ids.append(harvest_obj.id)
-        except urllib2.HTTPError, e:
+        except urllib2.HTTPError as e:
             log.exception(
                 'Gather stage failed on %s (%s): %s, %s'
                 % (
                     harvest_job.source.url,
-                    e.fp.read(),
+                    e.read(),
                     e.reason,
-                    e.hdrs
+                    e.headers
                 )
             )
             self._save_gather_error(
@@ -87,7 +86,7 @@ class OaipmhHarvester(HarvesterBase):
                 harvest_job.source.url, harvest_job
             )
             return None
-        except Exception, e:
+        except Exception as e:
             log.exception(
                 'Gather stage failed on %s: %s'
                 % (
@@ -180,6 +179,7 @@ class OaipmhHarvester(HarvesterBase):
                 )
                 self._after_record_fetch(record)
                 log.debug('record found!')
+                harvest_object.guid = munge_title_to_name(harvest_object.guid)
             except:
                 log.exception('getRecord failed')
                 self._save_object_error('Get record failed!', harvest_object)
@@ -268,35 +268,46 @@ class OaipmhHarvester(HarvesterBase):
                 'user': self.user
             }
 
-            package_dict = {}
+            source_dataset = get_action('package_show')(
+                context,
+                {'id': harvest_object.source.id}
+            )
+
+            package_dict = self._default_ckan_mapping()
             content = json.loads(harvest_object.content)
             log.debug(content)
 
-            package_dict['id'] = munge_title_to_name(harvest_object.guid)
-            package_dict['name'] = package_dict['id']
+            package_dict['owner_org'] = source_dataset.get('owner_org')
+            package_dict['id'] = harvest_object.guid
+            package_dict['name'] = harvest_object.guid
 
             mapping = self._get_mapping()
 
-            for ckan_field, oai_field in mapping.iteritems():
+            # Add base dictionary
+            for ckan_field, oai_field in mapping.items():
                 try:
                     package_dict[ckan_field] = content[oai_field][0]
                 except (IndexError, KeyError):
                     continue
-
-            # add author
-            package_dict['author'] = self._extract_author(content)
-
-            # add owner_org
-            source_dataset = get_action('package_show')(
-              context,
-              {'id': harvest_object.source.id}
-            )
-            owner_org = source_dataset.get('owner_org')
-            package_dict['owner_org'] = owner_org
-
-            # add license
             
-            package_dict['license_id'] = 'CC-BY-NC-4.0'
+            # add Frequency
+            if "coverage" in content:
+                for value in content["coverage"]:
+                    if "Frequency" in self._get_frequency_granularity(value)["key"]:
+                        package_dict["frequency"] = self._get_frequency_granularity(value)["value"].lower()
+
+            # add Temporal
+            if "date" in content:
+                dates = self._get_dates(content["date"])
+                temporal = ","
+
+                for date in dates:
+                    if "TemporalFrom" in date["key"]:
+                        temporal = date["value"] + "T00:00:00" + temporal
+                    elif "TemporalUntil" in date["key"]:
+                        temporal += date["value"] + "T00:00:00"
+
+                package_dict["temporal"] = temporal
 
             # add resources
             urls = self._get_possible_resource(harvest_object, content)
@@ -311,29 +322,14 @@ class OaipmhHarvester(HarvesterBase):
             package_dict['tags'] = tags
             package_dict['extras'] = extras
 
+            #TODO Check metadata_created
             package_dict['metadata_modified'] = content['metadata_modified']
             package_dict['metadata_created'] = content['metadata_modified']
             
-            # groups aka projects
-            groups = []
-            groups.extend(self._fill_education_group(content, context))
-
-            # create group based on set
-            #if content['set_spec']:
-            #    log.debug('set_spec: %s' % content['set_spec'])
-            #    groups.extend(
-            #        self._find_or_create_groups(
-            #            content['set_spec'],
-            #            context
-            #        )
-            #    )
-
-            # add groups from content
-            #groups.extend(
-            #    self._extract_groups(content, context)
-            #)
-
-            package_dict['groups'] = groups
+            ## groups
+            # groups = []
+            # groups.append()
+            # package_dict['groups'] = groups
 
             # allow sub-classes to add additional fields
             package_dict = self._extract_additional_fields(
@@ -344,7 +340,8 @@ class OaipmhHarvester(HarvesterBase):
             log.debug('Create/update package using dict: %s' % package_dict)
             self._create_or_update_package(
                 package_dict,
-                harvest_object
+                harvest_object,
+                package_dict_form='package_show'
             )
 
             Session.commit()
@@ -358,6 +355,47 @@ class OaipmhHarvester(HarvesterBase):
             )
             return False
         return True
+    
+    def _default_ckan_mapping(self):
+        return {
+            "applicable_legislation": [],
+            "associated_documentation": [],
+            "author": None,
+            "author_email": None,
+            "conforms_to": [],
+            "contact_email": "",
+            "contact_url": "",
+            "frequency": "nunca",
+            "hvd_category": "",
+            "isopen": True,
+            "language": "es",
+            "license_id": "CC-BY-NC-4.0",
+            "mainteiner": None,
+            "manteiner_email": None,
+            "metadata_created": "First harvestdate",
+            "metadata_modified": "Last harvest date",
+            "name": "",
+            "notes": "",
+            "num_resources": 0,
+            "num_tags": 0,
+            "private": False,
+            "related_resources": [""],
+            "spatial": "zaragoza",
+            "spatial_resolution": None,
+            "state": "active",
+            "tags.name": "",
+            "temporal": "None,None",
+            "title": "",
+            "type": "dataset",
+            "url": None,
+            "version": 1,
+            "extras": None,
+            "resources": [{}],
+            "tags": [{}],
+            "groups": [{"id": "6bc59ed8-b636-493b-9144-1dbe3faa4bda"}],
+            "relationshps_as_subject": [],
+            "relationshps_as_object": [],
+        }
 
     def _get_mapping(self):
         return {
@@ -365,32 +403,38 @@ class OaipmhHarvester(HarvesterBase):
             'notes': 'description',
             'maintainer': 'publisher',
             'maintainer_email': 'maintainer_email',
-            'url': 'source',
+            'author': 'creator'
         }
-
-    def _extract_author(self, content):
-        return ', '.join(content['creator'])
-
-    def _extract_license_id(self, content):
-        return ', '.join(content['rights'])
-
+    
     def _extract_tags_and_extras(self, content):
         extras = []
         tags = []
         checker = False
-        for key, value in content.iteritems():
+        for key, value in content.items():
             if key in ['relation','rights','identifier','pulisher','creator','set_spec','metadata_modified','publisher']:
                 #ignoramos los nodos relation
                 continue
 
+            if key in self._get_mapping().values():
+                continue
+
+            # Tags
+            if key in ['type', 'subject']:
+                if type(value) is list:
+                    tags.extend({"name": list_value.capitalize()} for list_value in value)
+                else:
+                    tags.extend({"name": list_value.capitalize()} for list_value in value.split(';'))
+                continue
+            
+            # Extra Spatials
             if key in ['coverage']:
                 checker = True
                 log.debug('Encontrado coverage')
                 for x in value:
                     log.debug('Value: %s ' % x)
                     extras.append(self._get_frequency_granularity(x))
-                    
-
+            
+            # Extra Dates
             if key in ['date']:
                 checker = True
                 log.debug('Encontrado fecha con tamanyo %s' % len(value))
@@ -398,31 +442,19 @@ class OaipmhHarvester(HarvesterBase):
                 for x in dates:
                     extras.append(x)
 
-            if key in self._get_mapping().values():
-                continue
-            if key in ['type', 'subject']:
-                if type(value) is list:
-                    tags_capitalized = []
-                    for content in value:
-                        value_aux = content
-                        final_value = value_aux.capitalize()
-                        tags_capitalized.append(final_value)
-                    tags.extend(tags_capitalized)
-                else:
-                    tags.extend(value.split(';'))
-                continue
+            # Other extra values
             if value and type(value) is list:
                 value = value[0]
             if not value:
                 value = None
             
             if not checker:
-                extras.append((key, value))
+                extras.append({"key": key, "value": value})
 
         #tags = [munge_tag(tag[:100]) for tag in tags]
 
-        extras.append(('typeAragopedia',u'Arag\xf3n'))
-        extras.append(('uriAragopedia',u'http://opendata.aragon.es/recurso/territorio/ComunidadAutonoma/Arag\xf3n'))
+        extras.append({'key': 'typeAragopedia', 'value': u'Arag\xf3n'})
+        extras.append({'key': 'uriAragopedia', 'value': u'http://opendata.aragon.es/recurso/territorio/ComunidadAutonoma/Arag\xf3n'})
 
         return (tags, extras)
 
@@ -467,7 +499,7 @@ class OaipmhHarvester(HarvesterBase):
         log.debug('key: %s ' % key_content)
         log.debug('value: %s ' % value_content)
         
-        return (key_content, value_content)
+        return {"key": key_content, "value": value_content}
     
     def _get_dates(self, value):
         dates = []
@@ -475,14 +507,14 @@ class OaipmhHarvester(HarvesterBase):
         if len(value) > 0:
             temp_from_date = value[0]
             temp_from_date = temp_from_date[6:] + '-' + temp_from_date[3:-5] + '-' + temp_from_date[0:-8]
-            dates.append(('TemporalFrom', temp_from_date))
+            dates.append({'key': 'TemporalFrom', 'value': temp_from_date})
 
         if len(value) == 2:
             temp_until_date = value[1]
             temp_until_date = temp_until_date[6:] + '-' + temp_until_date[3:-5] + '-' + temp_until_date[0:-8]
-            dates.append(('TemporalUntil', temp_until_date))
+            dates.append({'key': 'TemporalUntil', 'value': temp_until_date})
 
-        return (dates)
+        return dates
 
 
     def _extract_resources(self, url, content):
@@ -524,13 +556,6 @@ class OaipmhHarvester(HarvesterBase):
         # This method is the ideal place for sub-classes to
         # change whatever they want in the package_dict
         return package_dict
-
-    def _fill_education_group(self, content, context):
-        log.debug('Education Group')
-        group_ids = []
-        group_ids.append('6bc59ed8-b636-493b-9144-1dbe3faa4bda')
-        log.debug('Group ids: %s' % group_ids)
-        return group_ids
         
     def _find_or_create_groups(self, groups, context):
         log.debug('Group names: %s' % groups)
